@@ -251,8 +251,10 @@ class DARN:
 				if current_node == self.config['hostname']:
 					self.info("Trying to handle error event about victim %s myself" % event['victim'])
 					def handle_response(success, message):
-						self.info("Failed to handle error event about victim %s myself: %s" % (event['victim'], message))
-						event_status['node_failed'] = not success
+						successstr = "Failed"
+						if success: successstr = "Succeeded"
+						self.info("%s to handle error event about victim %s myself: %s" % (successstr, event['victim'], message))
+						self.process_error_event_signoff(current_node, event['id'], success)
 					self.handle_error_event(event, handle_response)
 				else:
 					self.info("Sending error event about victim %s to node %s" % (event['victim'], current_node))
