@@ -7,6 +7,7 @@ import re
 import sys
 import smtplib
 from email.mime.text import MIMEText
+import signal, os
 
 class DARN:
 	VERSION = "0.1"
@@ -39,6 +40,9 @@ class DARN:
 		self.config_version = None
 		self.hosts = {}
 		self.reload()
+		(host, port) = self.split_hostname(self.config['hostname'])
+		self.debug("Going to listen on host %s port %s" % (host, port))
+		self.net.create_server_socket(host, port, self.new_outgoing_connection, self.data_from_unidentified_host)
 
 	def split_hostname(self, node):
 		m = re.match(r'^(.+?)(?::(\d+))?$', node)
@@ -316,9 +320,6 @@ class DARN:
 		self.testament = self.generate_testament()
 		self.config_version = int(time.time())
 		self.info("Loaded configuration version %s" % self.config_version)
-		(host, port) = self.split_hostname(self.config['hostname'])
-		self.debug("Going to listen on host %s port %s" % (host, port))
-		self.net.create_server_socket(host, port, self.new_outgoing_connection, self.data_from_unidentified_host)
 		self.push_config()
 
 	"""
@@ -367,4 +368,7 @@ class DARN:
 
 if __name__ == "__main__":
 	darn = DARN(sys.argv[1])
+	def _reload(a, b):
+		darn.reload()
+	signal.signal(signal.SIGHUP, _reload)
 	darn.run()
