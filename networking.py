@@ -2,6 +2,7 @@ import asyncore
 import Queue
 import json
 import re
+import time
 
 class DARNMessage:
 	def __init__(self, type, expire):
@@ -40,11 +41,11 @@ class DARNHost:
 			response = DARNMessagePing(data[1], None)
 		elif data[0] == "pong":
 			response = DARNMessagePong(data[1], None)
-		else
+		else:
 			fuck()
 		doe_iets_met(response)
 
-	def send(self, message)
+	def send(self, message):
 		self.msgqueue.put_nowait(message)
 
 class DARNSocket(asyncore.dispatcher):
@@ -84,5 +85,32 @@ class DARNSocket(asyncore.dispatcher):
 		sent = self.send(self.outbuf)
 		self.outbuf = self.outbuf[sent:]
 
-def run():
-	asyncore.loop()
+class DARNetworking:
+	def __init__(self):
+		self.timers = []
+
+	def addTimer(self, stamp, what):
+		self.timers.append((stamp, what))
+
+	def getFirstTimer(self):
+		if len(self.timers) == 0:
+			return None
+		first = (0, self.timers[0][0], self.timers[0][1])
+		for (idx, (stamp, what)) in enumerate(self.timers):
+			if stamp > first[1]:
+				first = (idx, stamp, what)
+		return first
+
+	def run():
+		while True:
+			now = time.time()
+			first = self.getFirstTimer()
+			if first:
+				if first[1] >= now:
+					first[2]()
+					del self.timers[first[0]]
+					continue
+				timeout = first - now
+			else:
+				timeout = None
+			asyncore.loop(timeout)
