@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import random
 from networking import *
@@ -39,21 +39,70 @@ class DARN:
 		return (m.group(1), int(m.group(2)))
 
 	def host(self, node):
-		if not self.hosts[node]:
+		if node not in self.hosts:
 			(hostname, port) = self.split_hostname(node)
-			self.hosts[node] = host = DARNHost()
-			host.connect(hostname, port)
+			self.hosts[node] = host = DARNHost(self.data_from_identified_host)
+			host.setHost(hostname, port)
+			host.connect()
 			host.send({
 				'hostname': self.config['hostname'],
 			})
+			return host
 		return self.hosts[node]
 
 	def data_from_unidentified_host(self, host, data):
 		self.debug("DARN Host connected to me: %s and sent: %s" % (host, data))
-		if not data['hostname']:
+		if 'hostname' not in data:
 			host.destroy()
 			return
 		host.merge(self.hosts[data['hostname']])
+		(hostname, port) = self.split_hostname(data['hostname'])
+		host.setHost(hostname, port)
+		host.changeCallback(self.data_from_identified_host)
+
+	def data_from_identified_host(self, host, data):
+		self.debug("DARN Host Data from identified host: %s" % data)
+
+		if 'type' not in data:
+			host.destroy()
+			return
+
+		peer = None
+		for _peer in self.hosts:
+			if self.hosts[_peer] == host:
+				peer = _peer
+				break
+
+		if peer is None:
+			self.info("Failed to match data from host %s to a peer" % host);
+			print self.hosts
+			return
+
+		if data['type'] == "config":
+			self.info("Noted configuration for identified host: %s" % peer)
+			self.node_configs[peer] = data;
+			print self.node_configs
+		elif data['type'] == "ping":
+			self.debug("Received ping from friend node %s" % peer)
+			config_version = data['config_version']
+			pong_packet = {
+				'type': 'pong',
+				'ttl': 15,
+			}
+			self.host(peer).send(pong_packet)
+			if config_version != self.config_version:
+				self.info("Friend node %s has older config of mine (version %s), pushing new config version %s"
+					% (peer, config_version, self.config_version))
+				self.push_config_to_node(peer)
+		elif data['type'] == "pong":
+			self.debug("Received pong from friend node %s" % peer)
+			self.expected_pongs.remove(peer)
+		elif data['type'] == "error":
+			self.info("Received error from friend node %s" % peer)
+			self.receive_error_event(peer, data)
+		else:
+			abort()
+>>>>>>> Fixed syntax errors, implemented communication, bugfixes
 
 	def stop(self):
 		self.info("Stopping")
@@ -65,7 +114,7 @@ class DARN:
 			return
 		self.info("Starting")
 		self.running = True
-		self.net.add_timer(0, lambda: self.check_nodes())
+		self.net.add_timer(0, self.check_nodes)
 		# This method blocks until there are no more timers to run
 		self.net.run()
 
@@ -76,55 +125,59 @@ class DARN:
 	call does not block.
 	"""
 	def check_nodes(self):
+		self.debug("About to check friend nodes")
 		if not self.running:
 			return
-		for node in self.config.nodes:
-			node_config = self.node_configs[node.hostname]
-			if node_config is None:
-				self.info("Cannot check friend node %s: no configuration known yet" % node.hostname)
-				continue
+		for node in self.config['nodes']:
+			node_config_version = 0;
+			if node['hostname'] in self.node_configs:
+				node_config_version = self.node_configs[node['hostname']]['config_version']
 			ping_packet = {
 				'type': 'ping',
 				'ttl': 15,
-				'config_version': node_config['config_version'],
+				'config_version': node_config_version,
 			}
-			self.expected_pongs.append(node.hostname)
-			self.debug("Sending ping to friend node %s" % node.hostname)
-			self.host(node.hostname).send(ping_packet)
-		self.net.add_timer(20, lambda: self.check_timeouts())
-		self.net.add_timer(30, lambda: self.check_nodes())
-
-	def receive_pong(self, node):
-		self.debug("Received pong from friend node %s" % node)
-		del self.expected_pongs[node]
-
-	def receive_ping(self, node, config_version):
-		self.debug("Received ping from friend node %s" % node)
-		pong_packet = {
-			'type': 'pong',
-			'ttl': 15,
-		}
-		self.host(node).send(pong_packet)
-		if config_version != self.config_version:
-			self.info("Friend node %s has older config of mine (version %s), pushing new config version %s"
-				% (node, config_version, self.config_version))
-			self.push_config_to_node(node)
+			self.expected_pongs.add(node['hostname'])
+			self.debug("Sending ping to friend node %s" % node['hostname'])
+			self.host(node['hostname']).send(ping_packet)
+		self.net.add_timer(10, self.check_timeouts)
+		self.net.add_timer(20, self.check_nodes)
 
 	"""
 	Received an error event. Process it by sending an e-mail, and send a
-	sign-off reply.
+	sign-off reply. 'node' is the sender of this error event; the victim
+	is in event['victim'].
 	"""
 	def receive_error_event(self, node, event):
+		self.debug("Received error event for node=%s" % node)
+		print self.node_configs
+		if event['victim'] not in self.node_configs:
+			self.info("Received error event about victim %s, but I don't have a node config, so can't inform it" % node)
+			signoff_packet = {
+				'type': 'signoff',
+				'id': event['id'],
+				'message': "Can't signoff, don't have a node config for this node",
+				'success': False,
+			}
+			print "Sending sign-off packet: " + str(signoff_packet)
+			self.host(node).send(signoff_packet)
+			return
+
+		victim_config = self.node_configs[event['victim']]
 		success=random.random() > 0.5
 		signoff_packet = {
 			'type': 'signoff',
-			'id': event.id,
+			'id': event['id'],
 			'message': "Handled by ignoring",
 			'success': success,
 		}
-		node_config = self.node_configs[node]
-		self.debug("Should have sent an e-mail to %s" % node_config['config']['email']);
-		self.info("Received erorr event, sending signoff success: " + success)
+		email = "unknown address"
+		if 'email' in victim_config['config']:
+			email = victim_config['config']['email']
+		self.debug("Should have sent an e-mail to %s" % email)
+		self.info("Received erorr event, sending signoff success: %s" % success)
+
+		print "Sending sign-off packet: " + str(signoff_packet)
 		self.host(node).send(signoff_packet)
 
 	"""
@@ -134,23 +187,28 @@ class DARN:
 	def check_timeouts(self):
 		if not self.running:
 			return
-		if len(self.expected_pongs) == 0:
-			return
 		for victim in self.expected_pongs:
-			self.info("Expected pong from friend %s, but did not receive any, generating error event", victim)
+			if victim not in self.node_configs:
+				self.info("Expected pong from friend %s, but did not receive any; however, don't have node configuration, so silent ignore" % victim)
+				continue
+			if 'testament' not in self.node_configs[victim]:
+				self.info("Expected pong from friend %s, but did not receive any; however, node config for %s does not contain testament, so silent ignore" % victim)
+				continue
+			else:
+				self.info("Expected pong from friend %s, but did not receive any, generating error event" % victim)
 			self.error_seq = self.error_seq + 1
 			error_event = {
 				'type': 'error',
-				'id': uuid.uuid1(self.config['hostname'], self.error_seq),
+				'id': str(uuid.uuid1(None, self.error_seq)),
 				'victim': victim,
 				'ttl': 20,
-				'message': "%s failed to received response from %s within 30 seconds",
+				'message': "%s failed to received response from %s within 30 seconds" % (self.config['hostname'], victim),
 			}
 			error_event_status = {
-				testament: self.node_configs[victim]['testament'],
-				current_index: None,
-				timeout: datetime.fromtimestamp(0),
-				node_failed: False,
+				'testament': self.node_configs[victim]['testament'],
+				'current_index': None,
+				'timeout': datetime.fromtimestamp(0),
+				'node_failed': False,
 			}
 			self.error_events.append((error_event, error_event_status))
 		self.pump_error_events()
@@ -162,18 +220,20 @@ class DARN:
 	def pump_error_events(self):
 		self.debug("Pumping %d error events" % len(self.error_events))
 		for (event, event_status) in self.error_events:
-			if event_status.timeout <= datetime.now() or event_status.node_failed:
-				if event_status.current_index is None:
+			self.debug("Error event has status: %s" % event_status)
+			
+			if event_status['timeout'] <= datetime.now() or event_status['node_failed']:
+				if event_status['current_index'] is None:
 					# this event was never sent anywhere
-					event_status.current_index = 0
+					event_status['current_index'] = 0
 				else:
-					event_status.current_index = event_status.current_index + 1
-				if len(event_status.testament) >= event_status.current_index:
+					event_status['current_index'] += 1
+				if len(event_status['testament']) <= event_status['current_index']:
 					raise SystemExit, "All testament nodes for a victim failed!"
-				current_node = event_status.testament[event_status.current_index]
-				self.info("Sending error event about victim %s to node %s", event.victim, current_node)
-				event_status.timeout = datetime.now() + datetime.timedelta(seconds=20)
-				event_status.node_failed = False
+				current_node = event_status['testament'][event_status['current_index']]
+				self.info("Sending error event about victim %s to node %s" % (event['victim'], current_node))
+				event_status['timeout'] = datetime.now() + timedelta(seconds=20)
+				event_status['node_failed'] = False
 				self.host(current_node).send(event)
 
 	"""
@@ -185,14 +245,14 @@ class DARN:
 		self.debug("Received error event signoff packet from node %s, success %s", node, success)
 		new_error_events = []
 		for (event, event_status) in self.error_events:
-			if event.id == id:
+			if event['id'] == id:
 				self.debug("Packet is about victim %s", victim)
 				if success:
 					self.info("Node %s succesfully signed-off error event about victim %s", node, victim)
 					continue
 				else:
 					self.info("Node %s failed to handle error event about victim %s", node, victim)
-					event_status.node_failed = True
+					event_status['node_failed'] = True
 			new_error_events.append((event, event_status))
 		self.error_events = new_error_events
 		self.pump_error_events()
@@ -214,8 +274,11 @@ class DARN:
 	"""
 	def load_config(self, configfile):
 		return {
-			'nodes': [],
-			'hostname': 'localhost:1337',
+			'nodes': [{
+				'hostname': 'localhost:1337',
+			}],
+			'hostname': 'localhost:1338',
+			'email': 'sjors@sjorsgielen.nl',
 		}
 
 	"""
@@ -223,7 +286,10 @@ class DARN:
 	documentation for more information about the testament.
 	"""
 	def generate_testament(self):
-		return []
+		nodes = []
+		for node in self.config['nodes']:
+			nodes.append(node['hostname'])
+		return nodes
 
 	"""
 	Generate a node key. See module documentation for more information
@@ -235,7 +301,7 @@ class DARN:
 	"""Push configuration, testament and node key to all nodes."""
 	def push_config(self):
 		for node in self.config['nodes']:
-			self.push_config_to_node(node)
+			self.push_config_to_node(node['hostname'])
 
 	"""Push configuration, testament and node key to given node."""
 	def push_config_to_node(self, node):

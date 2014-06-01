@@ -49,7 +49,7 @@ class DARNHost:
 
 	def connect(self):
 		sock = DARNSocket(self)
-		sock.connect(self.host, self.port))
+		sock.connect(self.host, self.port)
 		self.setSocket(sock)
 
 	def has_socket(self):
@@ -93,7 +93,7 @@ class DARNSocket(asyncore.dispatcher):
 
 	def connect(self, host, port):
 		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.connect((host, port))
+		asyncore.dispatcher.connect(self, (host, port))
 
 	def handle_connect(self):
 		pass
@@ -112,7 +112,7 @@ class DARNSocket(asyncore.dispatcher):
 			if len(self.inbuf) >= datalen:
 				self.manager.receive_msg(self.inbuf[len(m.group(0)):datalen-1])
 				self.inbuf = self.inbuf[datalen:]
-		eleif not re.match(r"^\d*", self.inbuf):
+		elif not re.match(r"^\d*", self.inbuf):
 			self.close()
 
 	def writable(self):
@@ -123,7 +123,7 @@ class DARNSocket(asyncore.dispatcher):
 	def handle_write(self):
 		if len(self.outbuf) == 0:
 			msg = self.manager.msgqueue.get_nowait()
-			str = msg.toString()
+			str = json.dumps(msg)
 			self.outbuf = "%d:%s\n" % (len(str), str)
 		sent = self.send(self.outbuf)
 		self.outbuf = self.outbuf[sent:]
@@ -170,7 +170,7 @@ class DARNetworking:
 			first = self.get_first_timer()
 			if first:
 				idx, stamp, what = first
-				if stamp >= now:
+				if stamp <= now:
 					what()
 					del self.timers[idx]
 					continue
@@ -179,4 +179,4 @@ class DARNetworking:
 				timeout = None
 			if timeout < 0:
 				timeout = 0
-			asyncore.loop(timeout)
+			asyncore.loop(timeout=timeout, count=1)
