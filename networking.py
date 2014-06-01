@@ -7,6 +7,7 @@ import time
 class DARNMessage:
 	def __init__(self, type, expire):
 		self.type = type
+		# XXX: expire naleven
 		self.expire = expire
 
 	def toString(self):
@@ -28,9 +29,10 @@ class DARNMessagePong(DARNMessage):
 		DARNMessage.__init__(self, "pong", expiry)
 
 class DARNHost:
-	def __init__(self):
+	def __init__(self, callback):
 		self.socket = None
 		self.msgqueue = Queue.Queue(0)
+		self.callback = callback
 
 	def setSocket(self, sock)
 		self.socket = sock
@@ -45,13 +47,7 @@ class DARNHost:
 
 	def receive_msg(self, msg):
 		data = json.loads(msg)
-		if data[0] == "ping":
-			response = DARNMessagePing(data[1], None)
-		elif data[0] == "pong":
-			response = DARNMessagePong(data[1], None)
-		else:
-			fuck()
-		doe_iets_met(response)
+		self.callback(self, data)
 
 	def send(self, message):
 		self.msgqueue.put_nowait(message)
@@ -116,6 +112,9 @@ class DARNServerSocket(asyncore.dispatcher):
 class DARNetworking:
 	def __init__(self):
 		self.timers = []
+
+	def create_server_socket(host, port, callback):
+		self.server = DARNServerSocket(host, port, callback)
 
 	def add_timer(self, stamp, what):
 		self.timers.append((time.time() + stamp, what))
