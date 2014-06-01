@@ -158,7 +158,7 @@ class DARN:
 		if 'email' in victim_config['config']:
 			email = victim_config['config']['email']
 		self.info("Should have sent an e-mail to %s" % email)
-		callback(False, "Sending e-mail not implemented yet")
+		callback(True, "Sending e-mail not implemented yet")
 
 	"""
 	Received an error event. Process it by sending an e-mail, and send a
