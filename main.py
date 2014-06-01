@@ -272,13 +272,10 @@ class DARN:
 	Load configuration from the given file.
 	"""
 	def load_config(self, configfile):
-		return {
-			'nodes': [{
-				'hostname': 'localhost:1337',
-			}],
-			'hostname': 'localhost:1338',
-			'email': 'sjors@sjorsgielen.nl',
-		}
+		fh = open(configfile)
+		cfg = json.load(fh)
+		fh.close()
+		return cfg
 
 	"""
 	Generate testament from configuration. See module
@@ -316,5 +313,5 @@ class DARN:
 		self.host(node).send(config_push)
 
 if __name__ == "__main__":
-	darn = DARN("/etc/darn.conf")
+	darn = DARN(sys.argv[1])
 	darn.run()
