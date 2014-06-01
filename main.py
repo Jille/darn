@@ -5,6 +5,8 @@ import random
 from networking import *
 import re
 import sys
+import smtplib
+from email.mime.text import MIMEText
 
 class DARN:
 	VERSION = "0.1"
@@ -157,11 +159,32 @@ class DARN:
 
 	def handle_error_event(self, event, callback):
 		victim_config = self.node_configs[event['victim']]
-		email = "unknown address"
-		if 'email' in victim_config['config']:
-			email = victim_config['config']['email']
-		self.info("Should have sent an e-mail to %s" % email)
-		callback(True, "Sending e-mail not implemented yet")
+		if not 'email' in victim_config['config']:
+			callback(False, "Cannot send e-mail regarding failure of victim %s: no e-mail address known" % event['victim'])
+		email = victim_config['config']['email']
+		msg = MIMEText("%s: Error event report:\n%s\n" % (datetime.now(), event))
+
+		if not 'smtp' in self.config or not 'sender' in self.config['smtp'] or not 'host' in self.config['smtp']:
+			callback(False, "Cannot send e-mail regarding failure of victim %s: no valid smtp configuration" % event['victim'])
+
+		msg['Subject'] = "DARN! Error event report"
+		msg['From'] = self.config['smtp']['sender']
+		msg['To'] = email
+		email_succeeded = None
+		email_error = None
+		try:
+			s = smtplib.SMTP(self.config['smtp']['host'])
+			recipients_failed = s.sendmail(self.config['smtp']['sender'], [email], msg.as_string())
+			s.quit()
+			if len(recipients_failed) == 0:
+				email_succeeded = False
+				email_error = "Failed to send to some recipients: " + str(recipients_failed)
+			else:
+				email_succeeded = True
+		except SMTPException as e:
+			email_succeded = False
+			email_error = str(e)
+		callback(True, email_error)
 
 	"""
 	Received an error event. Process it by sending an e-mail, and send a
