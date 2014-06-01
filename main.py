@@ -71,7 +71,7 @@ class DARN:
 		# host.changeCallback(lambda x: host.send({'hostname': self.config['hostname']}), self.data_from_identified_host)
 
 	def data_from_identified_host(self, host, data):
-		self.debug("DARN Host Data from identified host: %s" % data)
+		self.debug("DARN Host Data from identified host %s: %s" % (host, data))
 
 		if 'type' not in data:
 			host.destroy()
@@ -81,13 +81,11 @@ class DARN:
 
 		if peer is None:
 			self.info("Failed to match data from host %s to a peer" % host);
-			print self.hosts
 			return
 
 		if data['type'] == "config":
 			self.info("Noted configuration for identified host: %s" % peer)
 			self.node_configs[peer] = data;
-			print self.node_configs
 		elif data['type'] == "ping":
 			self.debug("Received ping from friend node %s" % peer)
 			config_version = data['config_version']
@@ -107,7 +105,7 @@ class DARN:
 			self.info("Received error from friend node %s" % peer)
 			self.receive_error_event(peer, data)
 		else:
-			abort()
+			self.info("Received unknown packet type %s from friend node %s" % (data['type'], peer))
 
 	def stop(self):
 		self.info("Stopping")
@@ -145,7 +143,7 @@ class DARN:
 				'config_version': node_config_version,
 			}
 			self.expected_pongs.add(node['hostname'])
-			self.debug("Sending ping to friend node %s" % node['hostname'])
+			self.debug("Sending ping to friend node %s, config version %d" % (node['hostname'], node_config_version))
 			self.host(node['hostname']).send(ping_packet)
 		self.net.add_timer(10, self.check_timeouts)
 		self.net.add_timer(20, self.check_nodes)
@@ -157,7 +155,6 @@ class DARN:
 	"""
 	def receive_error_event(self, node, event):
 		self.debug("Received error event for node=%s" % node)
-		print self.node_configs
 		if event['victim'] not in self.node_configs:
 			self.info("Received error event about victim %s, but I don't have a node config, so can't inform it" % node)
 			signoff_packet = {
@@ -166,7 +163,6 @@ class DARN:
 				'message': "Can't signoff, don't have a node config for this node",
 				'success': False,
 			}
-			print "Sending sign-off packet: " + str(signoff_packet)
 			self.host(node).send(signoff_packet)
 			return
 
@@ -185,7 +181,6 @@ class DARN:
 		self.debug("Should have sent an e-mail to %s" % email)
 		self.info("Received erorr event, sending signoff success: %s" % success)
 
-		print "Sending sign-off packet: " + str(signoff_packet)
 		self.host(node).send(signoff_packet)
 
 	"""
@@ -254,16 +249,17 @@ class DARN:
 	mark the error event so that it is sent to the next testament node.
 	"""
 	def process_error_event_signoff(self, node, id, success):
-		self.debug("Received error event signoff packet from node %s, success %s", node, success)
+		self.debug("Received error event signoff packet from node %s, success %s" % (node, success))
 		new_error_events = []
 		for (event, event_status) in self.error_events:
 			if event['id'] == id:
-				self.debug("Packet is about victim %s", victim)
+				victim = event['victim']
+				self.debug("Packet is about victim %s" % victim)
 				if success:
-					self.info("Node %s succesfully signed-off error event about victim %s", node, victim)
+					self.info("Node %s succesfully signed-off error event about victim %s" % (node, victim))
 					continue
 				else:
-					self.info("Node %s failed to handle error event about victim %s", node, victim)
+					self.info("Node %s failed to handle error event about victim %s" % (node, victim))
 					event_status['node_failed'] = True
 			new_error_events.append((event, event_status))
 		self.error_events = new_error_events
