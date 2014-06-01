@@ -9,7 +9,10 @@ class DARN:
 	VERSION = "0.1"
 
 	def log(self, severity, message):
-		print "%s: DARN[%s]: %s" % (datetime.now(), severity, message)
+		hostname = "unknown"
+		if hasattr(self, 'config') and 'hostname' in self.config:
+			hostname = self.config['hostname']
+		print "%s: DARN[%s][%s]: %s" % (datetime.now(), hostname, severity, message)
 
 	def info(self, message):
 		self.log("info", message)
