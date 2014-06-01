@@ -176,7 +176,7 @@ class DARN:
 			s = smtplib.SMTP(self.config['smtp']['host'])
 			recipients_failed = s.sendmail(self.config['smtp']['sender'], [email], msg.as_string())
 			s.quit()
-			if len(recipients_failed) == 0:
+			if len(recipients_failed) > 0:
 				email_succeeded = False
 				email_error = "Failed to send to some recipients: " + str(recipients_failed)
 			else:
