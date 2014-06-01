@@ -42,12 +42,9 @@ class DARN:
 	def host(self, node):
 		if node not in self.hosts:
 			(hostname, port) = self.split_hostname(node)
-			self.hosts[node] = host = DARNHost(self.data_from_identified_host)
+			self.hosts[node] = host = DARNHost(lambda x: host.send({'hostname': self.config['hostname']}), self.data_from_identified_host)
 			host.setHost(hostname, port)
 			host.connect()
-			host.send({
-				'hostname': self.config['hostname'],
-			})
 			return host
 		return self.hosts[node]
 

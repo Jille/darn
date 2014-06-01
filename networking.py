@@ -30,12 +30,13 @@ class DARNMessagePong(DARNMessage):
 		DARNMessage.__init__(self, "pong", expiry)
 
 class DARNHost:
-	def __init__(self, callback):
+	def __init__(self, connectCallback, dataCallback):
 		self.host = None
 		self.port = None
 		self.socket = None
 		self.msgqueue = Queue.Queue(0)
-		self.callback = callback
+		self.connectCallback = connectCallback
+		self.dataCallback = dataCallback
 
 	def setSocket(self, sock):
 		self.socket = sock
@@ -44,8 +45,9 @@ class DARNHost:
 		self.host = host
 		self.port = port
 
-	def changeCallback(self, callback):
-		self.callback = callback
+	def changeCallbacks(self, connectCallback, dataCallback):
+		self.connectCallback = connectCallback
+		self.dataCallback = dataCallback
 
 	def connect(self):
 		sock = DARNSocket(self)
@@ -55,9 +57,12 @@ class DARNHost:
 	def has_socket(self):
 		return (self.socket is not None)
 
+	def handle_connect(self):
+		self.connectCallback(self)
+
 	def receive_msg(self, msg):
 		data = json.loads(msg)
-		self.callback(self, data)
+		self.dataCallback(self, data)
 
 	def send(self, message):
 		self.msgqueue.put_nowait(message)
@@ -96,7 +101,7 @@ class DARNSocket(asyncore.dispatcher):
 		asyncore.dispatcher.connect(self, (host, port))
 
 	def handle_connect(self):
-		pass
+		self.manager.handle_connect()
 
 	def handle_close(self):
 		self.manager.lost_socket()
