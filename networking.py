@@ -69,6 +69,15 @@ class DARNHost:
 		if not self.has_socket():
 			self.connect()
 
+	def send_priority(self, message):
+		newq = Queue.Queue(0)
+		newq.put_nowait(message)
+		while not self.msgqueue.empty():
+			newq.put_nowait(self.msgqueue.get_nowait())
+		self.msgqueue = newq
+		if not self.has_socket():
+			self.connect()
+
 	def merge(self, other):
 		assert self.host == other.host
 		assert self.port == other.port

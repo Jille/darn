@@ -55,7 +55,7 @@ class DARN:
 		return None
 
 	def new_outgoing_connection(self, host):
-		host.send({'hostname': self.config['hostname']})
+		host.send_priority({'hostname': self.config['hostname']})
 
 	def data_from_unidentified_host(self, host, data):
 		self.debug("DARN Host connected to me: %s and sent: %s" % (host, data))
