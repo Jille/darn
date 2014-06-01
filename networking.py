@@ -28,9 +28,17 @@ class DARNMessagePong(DARNMessage):
 		DARNMessage.__init__(self, "pong", expiry)
 
 class DARNHost:
-	def __init__(self, host, port):
-		self.socket = DARNSocket(self, host, port)
+	def __init__(self):
+		self.socket = None
 		self.msgqueue = Queue.Queue(0)
+
+	def setSocket(self, sock)
+		self.socket = sock
+
+	def connect(self, host, port):
+		sock = DARNSocket(self)
+		sock.connect(host, port))
+		self.setSocket(sock)
 
 	def has_socket(self):
 		return (self.socket is not None)
@@ -49,11 +57,13 @@ class DARNHost:
 		self.msgqueue.put_nowait(message)
 
 class DARNSocket(asyncore.dispatcher):
-	def __init__(self, dn, host, port):
-		asyncore.dispatcher.__init__(self)
-		self.dn = dn
+	def __init__(self, manager, *args):
+		asyncore.dispatcher.__init__(self, *args)
+		self.manager = manager
 		self.outbuf = ''
 		self.inbuf = ''
+
+	def connect(self, host, port):
 		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.connect((host, port))
 
@@ -69,21 +79,39 @@ class DARNSocket(asyncore.dispatcher):
 		if m:
 			datalen = len(m.group(0)) + int(m.group(1)) + 1
 			if len(self.inbuf) >= datalen:
-				self.dh.receive_msg(self.inbuf[len(m.group(0)):int(m.group(1))])
+				self.manager.receive_msg(self.inbuf[len(m.group(0)):int(m.group(1))])
 				self.inbuf = self.inbuf[datalen:]
 
 	def writable(self):
 		if len(self.outbuf) > 0:
 			return True
-		return (not self.dh.msgqueue.empty())
+		return (not self.manager.msgqueue.empty())
 
 	def handle_write(self):
 		if len(self.outbuf) == 0:
-			msg = self.dh.msgqueue.get_nowait()
+			msg = self.manager.msgqueue.get_nowait()
 			str = msg.toString()
 			self.outbuf = "%d:%s\n" % (len(str), str)
 		sent = self.send(self.outbuf)
 		self.outbuf = self.outbuf[sent:]
+
+class DARNServerSocket(asyncore.dispatcher):
+	def __init__(self, host, port, callback):
+		asyncore.dispatcher.__init__(self)
+		self.callback = callback
+		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.set_reuse_addr()
+		self.bind((host, port))
+		self.listen(5)
+
+	def handle_accept(self):
+		pair = self.accept()
+		if pair is not None:
+			sock, addr = pair
+			print 'Incoming connection from %s' % repr(addr)
+			host = DARNHost()
+			host.setSocket(DARNSocket(host, sock))
+			self.callback(host)
 
 class DARNetworking:
 	def __init__(self):
@@ -106,11 +134,12 @@ class DARNetworking:
 			now = time.time()
 			first = self.get_first_timer()
 			if first:
-				if first[1] >= now:
-					first[2]()
-					del self.timers[first[0]]
+				idx, stamp, what = first
+				if stamp >= now:
+					what()
+					del self.timers[idx]]
 					continue
-				timeout = first[1] - now
+				timeout = stamp - now
 			else:
 				timeout = None
 			asyncore.loop(timeout)
