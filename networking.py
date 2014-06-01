@@ -104,7 +104,7 @@ class DARNetworking:
 	def run(self):
 		while True:
 			now = time.time()
-			first = self.getFirstTimer()
+			first = self.get_first_timer()
 			if first:
 				if first[1] >= now:
 					first[2]()
