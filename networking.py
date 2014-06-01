@@ -90,7 +90,7 @@ class DARNetworking:
 		self.timers = []
 
 	def add_timer(self, stamp, what):
-		self.timers.append((stamp, what))
+		self.timers.append((time.time() + stamp, what))
 
 	def get_first_timer(self):
 		if len(self.timers) == 0:
