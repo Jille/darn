@@ -100,7 +100,8 @@ class DARN:
 				self.push_config_to_node(peer)
 		elif data['type'] == "pong":
 			self.debug("Received pong from friend node %s" % peer)
-			self.expected_pongs.remove(peer)
+			if peer in self.expected_pongs:
+				self.expected_pongs.remove(peer)
 		elif data['type'] == "error":
 			self.info("Received error from friend node %s" % peer)
 			self.receive_error_event(peer, data)
