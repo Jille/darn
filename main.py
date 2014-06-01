@@ -268,6 +268,7 @@ class DARN:
 		self.config_version = int(time.time())
 		self.info("Loaded configuration version %s" % self.config_version)
 		(host, port) = self.split_hostname(self.config['hostname'])
+		self.debug("Going to listen on host %s port %s" % (host, port))
 		self.net.create_server_socket(host, port, self.data_from_unidentified_host)
 		self.push_config()
 
