@@ -47,6 +47,9 @@ class DARN:
 
 	def data_from_unidentified_host(self, host, data):
 		self.debug("DARN Host connected to me: %s and sent: %s" % (host, data))
+		if not data['hostname']:
+			host.destroy()
+			return
 		host.merge(self.hosts[data['hostname']])
 
 	def stop(self):
