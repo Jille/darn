@@ -166,11 +166,17 @@ class DARN:
 		if not 'email' in victim_config['config']:
 			callback(False, "Cannot send e-mail regarding failure of victim %s: no e-mail address known" % event['victim'])
 		email = victim_config['config']['email']
-		msg = MIMEText("%s: Error event report:\n%s\n" % (datetime.now(), event))
 
 		if not 'smtp' in self.config or not 'sender' in self.config['smtp'] or not 'host' in self.config['smtp']:
 			callback(False, "Cannot send e-mail regarding failure of victim %s: no valid smtp configuration" % event['victim'])
 
+		body  = "Error event report fired!\n"
+		body += "Event report ID: %s\n" % event['id']
+		body += "Time: %s\n" % datetime.now()
+		body += "Victim: %s\n" % event['victim']
+		body += "Message: %s\n" % event['message']
+
+		msg = MIMEText(body)
 		msg['Subject'] = "DARN! Error event report"
 		msg['From'] = self.config['smtp']['sender']
 		msg['To'] = email
