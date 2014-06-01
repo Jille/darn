@@ -3,6 +3,7 @@ import Queue
 import json
 import re
 import time
+import socket
 
 class DARNMessage:
 	def __init__(self, type, expire):
@@ -34,12 +35,12 @@ class DARNHost:
 		self.msgqueue = Queue.Queue(0)
 		self.callback = callback
 
-	def setSocket(self, sock)
+	def setSocket(self, sock):
 		self.socket = sock
 
 	def connect(self, host, port):
 		sock = DARNSocket(self)
-		sock.connect(host, port))
+		sock.connect(host, port)
 		self.setSocket(sock)
 
 	def has_socket(self):
@@ -71,11 +72,11 @@ class DARNSocket(asyncore.dispatcher):
 
 	def handle_read(self):
 		self.inbuf += self.recv(8192)
-		m = r"^(\d+):".match(self.inbuf)
+		m = re.match(r"^(\d+):", self.inbuf)
 		if m:
 			datalen = len(m.group(0)) + int(m.group(1)) + 1
 			if len(self.inbuf) >= datalen:
-				self.manager.receive_msg(self.inbuf[len(m.group(0)):int(m.group(1))])
+				self.manager.receive_msg(self.inbuf[len(m.group(0)):datalen-1])
 				self.inbuf = self.inbuf[datalen:]
 
 	def writable(self):
@@ -105,15 +106,14 @@ class DARNServerSocket(asyncore.dispatcher):
 		if pair is not None:
 			sock, addr = pair
 			print 'Incoming connection from %s' % repr(addr)
-			host = DARNHost()
+			host = DARNHost(self.callback)
 			host.setSocket(DARNSocket(host, sock))
-			self.callback(host)
 
 class DARNetworking:
 	def __init__(self):
 		self.timers = []
 
-	def create_server_socket(host, port, callback):
+	def create_server_socket(self, host, port, callback):
 		self.server = DARNServerSocket(host, port, callback)
 
 	def add_timer(self, stamp, what):
@@ -136,9 +136,10 @@ class DARNetworking:
 				idx, stamp, what = first
 				if stamp >= now:
 					what()
-					del self.timers[idx]]
+					del self.timers[idx]
 					continue
 				timeout = stamp - now
 			else:
 				timeout = None
+			if timeout < 0: timeout = 0
 			asyncore.loop(timeout)
