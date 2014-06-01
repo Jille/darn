@@ -237,8 +237,14 @@ class DARN:
 					event_status['current_index'] = 0
 				else:
 					event_status['current_index'] += 1
+
 				if len(event_status['testament']) <= event_status['current_index']:
-					raise SystemExit, "All testament nodes for a victim failed!"
+					self.info("All testament nodes for a victim failed. Starting over.")
+					event_status['current_index'] = None
+					event_status['timeout'] = datetime.now() + timedelta(minutes=5)
+					event_status['node_failed'] = False
+					continue
+
 				current_node = event_status['testament'][event_status['current_index']]
 				event_status['timeout'] = datetime.now() + timedelta(seconds=20)
 				event_status['node_failed'] = False
