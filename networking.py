@@ -62,6 +62,14 @@ class DARNHost:
 		if not self.has_socket():
 			self.connect()
 
+	def merge(self, other):
+		assert self.host == other.host
+		assert self.port == other.port
+		other.setSocket(self.socket)
+		while not self.msgqueue.empty():
+			other.msgqueue.put_nowait(self.msgqueue.get_nowait())
+		self.destroy()
+
 	def lost_socket(self):
 		self.socket = None
 		if not self.host:
@@ -167,5 +175,6 @@ class DARNetworking:
 				timeout = stamp - now
 			else:
 				timeout = None
-			if timeout < 0: timeout = 0
+			if timeout < 0:
+				timeout = 0
 			asyncore.loop(timeout)
