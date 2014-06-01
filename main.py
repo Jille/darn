@@ -106,7 +106,7 @@ class DARN:
 			self.info("Received error from friend node %s" % peer)
 			self.receive_error_event(peer, data)
 		elif data['type'] == "signoff":
-			self.info("Received signoff event from friend node %s, success=%s" % (peer, data['success']))
+			self.info("Received signoff event from friend node %s, success=%s: %s" % (peer, data['success'], data['message']))
 			self.process_error_event_signoff(peer, data['id'], data['success'])
 		else:
 			self.info("Received unknown packet type %s from friend node %s" % (data['type'], peer))
