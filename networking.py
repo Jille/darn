@@ -101,7 +101,7 @@ class DARNetworking:
 				first = (idx, stamp, what)
 		return first
 
-	def run():
+	def run(self):
 		while True:
 			now = time.time()
 			first = self.getFirstTimer()
