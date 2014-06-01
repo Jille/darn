@@ -4,6 +4,7 @@ import time
 import random
 from networking import *
 import re
+import sys
 
 class DARN:
 	VERSION = "0.1"
