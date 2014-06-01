@@ -56,7 +56,7 @@ class DARN:
 		host.merge(self.hosts[data['hostname']])
 		(hostname, port) = self.split_hostname(data['hostname'])
 		host.setHost(hostname, port)
-		host.changeCallback(self.data_from_identified_host)
+		host.changeCallback(lambda x: host.send({'hostname': self.config['hostname']}), self.data_from_identified_host)
 
 	def data_from_identified_host(self, host, data):
 		self.debug("DARN Host Data from identified host: %s" % data)
