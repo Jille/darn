@@ -8,6 +8,7 @@ import sys
 
 class DARN:
 	VERSION = "0.1"
+	SEND_PINGS=1
 	LOG_DEBUG=0
 
 	def log(self, severity, message):
@@ -131,6 +132,8 @@ class DARN:
 	def check_nodes(self):
 		self.debug("About to check friend nodes")
 		if not self.running:
+			return
+		if not DARN.SEND_PINGS:
 			return
 		for node in self.config['nodes']:
 			node_config_version = 0;
