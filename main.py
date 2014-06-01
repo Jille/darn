@@ -42,11 +42,20 @@ class DARN:
 	def host(self, node):
 		if node not in self.hosts:
 			(hostname, port) = self.split_hostname(node)
-			self.hosts[node] = host = DARNHost(lambda x: host.send({'hostname': self.config['hostname']}), self.data_from_identified_host)
+			self.hosts[node] = host = DARNHost(self.new_outgoing_connection, self.data_from_identified_host)
 			host.setHost(hostname, port)
 			host.connect()
 			return host
 		return self.hosts[node]
+
+	def find_peer_from_darnhost(self, host):
+		for peer in self.hosts:
+			if self.hosts[peer] == host:
+				return peer
+		return None
+
+	def new_outgoing_connection(self, host):
+		host.send({'hostname': self.config['hostname']})
 
 	def data_from_unidentified_host(self, host, data):
 		self.debug("DARN Host connected to me: %s and sent: %s" % (host, data))
@@ -65,11 +74,7 @@ class DARN:
 			host.destroy()
 			return
 
-		peer = None
-		for _peer in self.hosts:
-			if self.hosts[_peer] == host:
-				peer = _peer
-				break
+		peer = self.find_peer_from_darnhost(host)
 
 		if peer is None:
 			self.info("Failed to match data from host %s to a peer" % host);
@@ -269,7 +274,7 @@ class DARN:
 		self.info("Loaded configuration version %s" % self.config_version)
 		(host, port) = self.split_hostname(self.config['hostname'])
 		self.debug("Going to listen on host %s port %s" % (host, port))
-		self.net.create_server_socket(host, port, self.data_from_unidentified_host)
+		self.net.create_server_socket(host, port, self.new_outgoing_connection, self.data_from_unidentified_host)
 		self.push_config()
 
 	"""
