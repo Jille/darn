@@ -150,7 +150,7 @@ class DARNetworking:
 			return None
 		first = (0, self.timers[0][0], self.timers[0][1])
 		for (idx, (stamp, what)) in enumerate(self.timers):
-			if stamp > first[1]:
+			if stamp < first[1]:
 				first = (idx, stamp, what)
 		return first
 
