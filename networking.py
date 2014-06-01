@@ -81,7 +81,9 @@ class DARNHost:
 	def merge(self, other):
 		assert self.host == other.host
 		assert self.port == other.port
+		self.socket.manager = other
 		other.setSocket(self.socket)
+		self.socket = None
 		while not self.msgqueue.empty():
 			other.msgqueue.put_nowait(self.msgqueue.get_nowait())
 		self.destroy()
@@ -92,7 +94,8 @@ class DARNHost:
 			self.destroy()
 
 	def destroy(self):
-		self.callback = None
+		self.connect_callback = None
+		self.data_callback = None
 		self.msgqueue = None
 		if self.has_socket():
 			self.socket.close()
@@ -119,14 +122,16 @@ class DARNSocket(asyncore.dispatcher):
 	def handle_read(self):
 		self.inbuf += self.recv(8192)
 		# XXX: re precompilen
-		# XXX: connectie sluiten bij invalid data
 		m = re.match(r"^(\d+):", self.inbuf)
-		if m:
+		while m:
 			datalen = len(m.group(0)) + int(m.group(1)) + 1
 			if len(self.inbuf) >= datalen:
 				self.manager.receive_msg(self.inbuf[len(m.group(0)):datalen-1])
 				self.inbuf = self.inbuf[datalen:]
-		elif not re.match(r"^\d*", self.inbuf):
+			else:
+				break
+			m = re.match(r"^(\d+):", self.inbuf)
+		if re.match(r"^\D", self.inbuf):
 			self.close()
 
 	def writable(self):
