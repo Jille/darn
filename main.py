@@ -150,7 +150,7 @@ class DARN:
 			self.debug("Sending ping to friend node %s, config version %d" % (node['hostname'], node_config_version))
 			self.host(node['hostname']).send(ping_packet)
 		self.net.add_timer(10, self.check_timeouts)
-		self.net.add_timer(20, self.check_nodes)
+		self.net.add_timer(15, self.check_nodes)
 
 	"""
 	Received an error event. Process it by sending an e-mail, and send a
