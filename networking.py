@@ -38,9 +38,16 @@ class DARNHost:
 	def setSocket(self, sock):
 		self.socket = sock
 
-	def connect(self, host, port):
+	def setHost(self, host, port):
+		self.host = host
+		self.port = port
+
+	def changeCallback(self, callback):
+		self.callback = callback
+
+	def connect(self):
 		sock = DARNSocket(self)
-		sock.connect(host, port)
+		sock.connect(self.host, self.port))
 		self.setSocket(sock)
 
 	def has_socket(self):
@@ -52,6 +59,20 @@ class DARNHost:
 
 	def send(self, message):
 		self.msgqueue.put_nowait(message)
+		if not self.has_socket():
+			self.connect()
+
+	def lost_socket(self):
+		self.socket = None
+		if not self.host:
+			self.destroy()
+
+	def destroy(host):
+		self.callback = None
+		self.msgqueue = None
+		if self.has_socket():
+			self.socket.close()
+		self.socket = None
 
 class DARNSocket(asyncore.dispatcher):
 	def __init__(self, manager, *args):
@@ -68,16 +89,21 @@ class DARNSocket(asyncore.dispatcher):
 		pass
 
 	def handle_close(self):
+		self.manager.lost_socket()
 		self.close()
 
 	def handle_read(self):
 		self.inbuf += self.recv(8192)
+		# XXX: re precompilen
+		# XXX: connectie sluiten bij invalid data
 		m = re.match(r"^(\d+):", self.inbuf)
 		if m:
 			datalen = len(m.group(0)) + int(m.group(1)) + 1
 			if len(self.inbuf) >= datalen:
 				self.manager.receive_msg(self.inbuf[len(m.group(0)):datalen-1])
 				self.inbuf = self.inbuf[datalen:]
+		eleif not re.match(r"^\d*", self.inbuf):
+			self.close()
 
 	def writable(self):
 		if len(self.outbuf) > 0:
