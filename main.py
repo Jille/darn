@@ -8,6 +8,7 @@ import sys
 
 class DARN:
 	VERSION = "0.1"
+	LOG_DEBUG=0
 
 	def log(self, severity, message):
 		hostname = "unknown"
@@ -19,7 +20,8 @@ class DARN:
 		self.log("info", message)
 
 	def debug(self, message):
-		self.log("debug", message)
+		if DARN.LOG_DEBUG:
+			self.log("debug", message)
 
 	"""Create a DARN object. Read config from given file. """
 	def __init__(self, configfile):
