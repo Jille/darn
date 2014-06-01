@@ -102,7 +102,6 @@ class DARN:
 			self.receive_error_event(peer, data)
 		else:
 			abort()
->>>>>>> Fixed syntax errors, implemented communication, bugfixes
 
 	def stop(self):
 		self.info("Stopping")
