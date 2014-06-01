@@ -110,7 +110,7 @@ class DARNetworking:
 					first[2]()
 					del self.timers[first[0]]
 					continue
-				timeout = first - now
+				timeout = first[1] - now
 			else:
 				timeout = None
 			asyncore.loop(timeout)
