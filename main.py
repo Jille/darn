@@ -152,6 +152,14 @@ class DARN:
 		self.net.add_timer(10, self.check_timeouts)
 		self.net.add_timer(15, self.check_nodes)
 
+	def handle_error_event(self, event, callback):
+		victim_config = self.node_configs[event['victim']]
+		email = "unknown address"
+		if 'email' in victim_config['config']:
+			email = victim_config['config']['email']
+		self.info("Should have sent an e-mail to %s" % email)
+		callback(False, "Sending e-mail not implemented yet")
+
 	"""
 	Received an error event. Process it by sending an e-mail, and send a
 	sign-off reply. 'node' is the sender of this error event; the victim
@@ -170,22 +178,16 @@ class DARN:
 			self.host(node).send(signoff_packet)
 			return
 
-		victim_config = self.node_configs[event['victim']]
-		success=random.random() > 0.5
-		# TODO
-		signoff_packet = {
-			'type': 'signoff',
-			'id': event['id'],
-			'message': "Handled by ignoring",
-			'success': success,
-		}
-		email = "unknown address"
-		if 'email' in victim_config['config']:
-			email = victim_config['config']['email']
-		self.debug("Should have sent an e-mail to %s" % email)
-		self.info("Received erorr event, sending signoff success: %s" % success)
+		def handle_message(success, message):
+			signoff_packet = {
+				'type': 'signoff',
+				'id': event['id'],
+				'message': message,
+				'success': success,
+			}
+			self.host(node).send(signoff_packet)
 
-		self.host(node).send(signoff_packet)
+		self.handle_error_event(event, handle_message)
 
 	"""
 	Check if any of the hosts we checked earlier didn't respond yet.
@@ -242,7 +244,10 @@ class DARN:
 				event_status['node_failed'] = False
 				if current_node == self.config['hostname']:
 					self.info("Trying to handle error event about victim %s myself" % event['victim'])
-					# TODO
+					def handle_response(success, message):
+						self.info("Failed to handle error event about victim %s myself: %s" % (event['victim'], message))
+						event_status['node_failed'] = not success
+					self.handle_error_event(event, handle_response)
 				else:
 					self.info("Sending error event about victim %s to node %s" % (event['victim'], current_node))
 					self.host(current_node).send(event)
