@@ -162,6 +162,7 @@ class DARN:
 
 		victim_config = self.node_configs[event['victim']]
 		success=random.random() > 0.5
+		# TODO
 		signoff_packet = {
 			'type': 'signoff',
 			'id': event['id'],
@@ -228,10 +229,14 @@ class DARN:
 				if len(event_status['testament']) <= event_status['current_index']:
 					raise SystemExit, "All testament nodes for a victim failed!"
 				current_node = event_status['testament'][event_status['current_index']]
-				self.info("Sending error event about victim %s to node %s" % (event['victim'], current_node))
 				event_status['timeout'] = datetime.now() + timedelta(seconds=20)
 				event_status['node_failed'] = False
-				self.host(current_node).send(event)
+				if current_node == self.config['hostname']:
+					self.info("Trying to handle error event about victim %s myself" % event['victim'])
+					# TODO
+				else:
+					self.info("Sending error event about victim %s to node %s" % (event['victim'], current_node))
+					self.host(current_node).send(event)
 
 	"""
 	Process an error-event sign-off packet from a node. If the sign-off is
