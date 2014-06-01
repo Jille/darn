@@ -30,13 +30,13 @@ class DARNMessagePong(DARNMessage):
 		DARNMessage.__init__(self, "pong", expiry)
 
 class DARNHost:
-	def __init__(self, connectCallback, dataCallback):
+	def __init__(self, connect_callback, data_callback):
 		self.host = None
 		self.port = None
 		self.socket = None
 		self.msgqueue = Queue.Queue(0)
-		self.connectCallback = connectCallback
-		self.dataCallback = dataCallback
+		self.connect_callback = connect_callback
+		self.data_callback = data_callback
 
 	def setSocket(self, sock):
 		self.socket = sock
@@ -45,9 +45,9 @@ class DARNHost:
 		self.host = host
 		self.port = port
 
-	def changeCallbacks(self, connectCallback, dataCallback):
-		self.connectCallback = connectCallback
-		self.dataCallback = dataCallback
+	def change_callbacks(self, connect_callback, data_callback):
+		self.connect_callback = connect_callback
+		self.data_callback = data_callback
 
 	def connect(self):
 		sock = DARNSocket(self)
@@ -58,11 +58,11 @@ class DARNHost:
 		return (self.socket is not None)
 
 	def handle_connect(self):
-		self.connectCallback(self)
+		self.connect_callback(self)
 
 	def receive_msg(self, msg):
 		data = json.loads(msg)
-		self.dataCallback(self, data)
+		self.data_callback(self, data)
 
 	def send(self, message):
 		self.msgqueue.put_nowait(message)
@@ -134,9 +134,10 @@ class DARNSocket(asyncore.dispatcher):
 		self.outbuf = self.outbuf[sent:]
 
 class DARNServerSocket(asyncore.dispatcher):
-	def __init__(self, host, port, callback):
+	def __init__(self, host, port, connect_callback, data_callback):
 		asyncore.dispatcher.__init__(self)
-		self.callback = callback
+		self.connect_callback = connect_callback
+		self.data_callback = data_callback
 		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.set_reuse_addr()
 		self.bind((host, port))
@@ -147,15 +148,15 @@ class DARNServerSocket(asyncore.dispatcher):
 		if pair is not None:
 			sock, addr = pair
 			print 'Incoming connection from %s' % repr(addr)
-			host = DARNHost(self.callback)
+			host = DARNHost(self.connect_callback, self.data_callback)
 			host.setSocket(DARNSocket(host, sock))
 
 class DARNetworking:
 	def __init__(self):
 		self.timers = []
 
-	def create_server_socket(self, host, port, callback):
-		self.server = DARNServerSocket(host, port, callback)
+	def create_server_socket(self, host, port, connect_callback, data_callback):
+		self.server = DARNServerSocket(host, port, connect_callback, data_callback)
 
 	def add_timer(self, stamp, what):
 		self.timers.append((time.time() + stamp, what))
