@@ -31,6 +31,8 @@ class DARNMessagePong(DARNMessage):
 
 class DARNHost:
 	def __init__(self, callback):
+		self.host = None
+		self.port = None
 		self.socket = None
 		self.msgqueue = Queue.Queue(0)
 		self.callback = callback
@@ -75,7 +77,7 @@ class DARNHost:
 		if not self.host:
 			self.destroy()
 
-	def destroy(host):
+	def destroy(self):
 		self.callback = None
 		self.msgqueue = None
 		if self.has_socket():
