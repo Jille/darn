@@ -127,7 +127,7 @@ class DARN:
 	def pump_error_events(self):
 		self.debug("Pumping %d error events" % len(self.error_events))
 		for (event, event_status) in self.error_events:
-			if event_status.timeout <= datetime.now or event_status.node_failed:
+			if event_status.timeout <= datetime.now() or event_status.node_failed:
 				if event_status.current_index is None:
 					# this event was never sent anywhere
 					event_status.current_index = 0
