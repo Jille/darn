@@ -141,7 +141,10 @@ class DARNSocket(asyncore.dispatcher):
 
 	def handle_write(self):
 		if len(self.outbuf) == 0:
-			msg = self.manager.msgqueue.get_nowait()
+			try:
+				msg = self.manager.msgqueue.get_nowait()
+			except Queue.Empty:
+				return
 			str = json.dumps(msg)
 			self.outbuf = "%d:%s\n" % (len(str), str)
 		sent = self.send(self.outbuf)
