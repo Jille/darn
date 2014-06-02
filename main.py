@@ -39,6 +39,7 @@ class DARN:
 		self.error_events = []
 		self.config_version = None
 		self.hosts = {}
+		self.failed_nodes = set()
 		self.reload()
 		(host, port) = self.split_hostname(self.config['hostname'])
 		self.debug("Going to listen on host %s port %s" % (host, port))
@@ -111,6 +112,8 @@ class DARN:
 			self.debug("Received pong from friend node %s" % peer)
 			if peer in self.expected_pongs:
 				self.expected_pongs.remove(peer)
+				if peer in self.failed_nodes:
+					self.failed_nodes.remove(peer)
 		elif data['type'] == "error":
 			self.info("Received error from friend node %s" % peer)
 			self.receive_error_event(peer, data)
@@ -239,8 +242,11 @@ class DARN:
 			if 'testament' not in self.node_configs[victim]:
 				self.info("Expected pong from friend %s, but did not receive any; however, node config for %s does not contain testament, so silent ignore" % victim)
 				continue
-			else:
-				self.info("Expected pong from friend %s, but did not receive any, generating error event" % victim)
+			if victim in self.failed_nodes:
+				self.info("Expected pong from friend %s, but did not receive any, host is probably still down" % victim)
+				continue
+			self.info("Expected pong from friend %s, but did not receive any, generating error event" % victim)
+			self.failed_nodes.add(victim)
 			self.error_seq = self.error_seq + 1
 			error_event = {
 				'type': 'error',
