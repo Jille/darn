@@ -197,7 +197,7 @@ class DARN:
 		except smtplib.SMTPException as e:
 			email_succeeded = False
 			email_error = str(e)
-		callback(True, email_error)
+		callback(email_succeeded, email_error)
 
 	"""
 	Received an error event. Process it by sending an e-mail, and send a
