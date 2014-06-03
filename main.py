@@ -40,6 +40,7 @@ class DARN:
 		self.config_version = None
 		self.hosts = {}
 		self.failed_nodes = set()
+		self.maintenance_shutdown = False
 		self.reload()
 		(host, port) = self.split_hostname(self.config['hostname'])
 		self.debug("Going to listen on host %s port %s" % (host, port))
@@ -99,6 +100,14 @@ class DARN:
 		elif data['type'] == "ping":
 			self.debug("Received ping from friend node %s" % peer)
 			config_version = data['config_version']
+			if self.maintenance_shutdown:
+				if config_version != 0:
+					maintenance_packet = {
+						'hostname': self.config['hostname'],
+						'type': 'maintenance',
+					}
+					host.send(maintenance_packet)
+				return
 			pong_packet = {
 				'type': 'pong',
 				'ttl': 15,
@@ -120,6 +129,8 @@ class DARN:
 		elif data['type'] == "signoff":
 			self.info("Received signoff event from friend node %s, success=%s: %s" % (peer, data['success'], data['message']))
 			self.process_error_event_signoff(peer, data['id'], data['success'])
+		elif data['type'] == "maintenance":
+			del self.node_configs[peer]
 		else:
 			self.info("Received unknown packet type %s from friend node %s" % (data['type'], peer))
 
@@ -360,6 +371,16 @@ class DARN:
 	def generate_node_key(self):
 		return "four"
 
+	def enable_maintenance(self):
+		self.maintenance_shutdown = True
+		maintenance_packet = {
+			'hostname': self.config['hostname'],
+			'type': 'maintenance',
+		}
+		for node in self.config['nodes']:
+			self.host(node['hostname']).send(maintenance_packet)
+		self.net.add_timer(10, lambda: sys.exit(0))
+
 	"""Push configuration, testament and node key to all nodes."""
 	def push_config(self):
 		for node in self.config['nodes']:
@@ -383,4 +404,7 @@ if __name__ == "__main__":
 	def _reload(a, b):
 		darn.reload()
 	signal.signal(signal.SIGHUP, _reload)
+	def _maintenance(a, b):
+		darn.enable_maintenance()
+	signal.signal(signal.SIGUSR1, _maintenance)
 	darn.run()
