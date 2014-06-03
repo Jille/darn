@@ -81,6 +81,7 @@ class DARNHost:
 	def merge(self, other):
 		assert self.host == other.host
 		assert self.port == other.port
+		assert self.socket is not None
 		self.socket.manager = other
 		other.setSocket(self.socket)
 		self.socket = None
