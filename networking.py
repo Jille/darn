@@ -111,10 +111,15 @@ class DARNSocket(asyncore.dispatcher):
 
 	def connect(self, host, port):
 		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.handle_error = self.handle_connect_error
 		asyncore.dispatcher.connect(self, (host, port))
 
 	def handle_connect(self):
 		self.manager.handle_connect()
+		self.handle_error = asyncore.dispatcher.handle_error
+
+	def handle_connect_error(self):
+		print "Connecting failed"
 
 	def handle_close(self):
 		self.manager.lost_socket()
