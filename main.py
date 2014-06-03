@@ -195,7 +195,7 @@ class DARN:
 			else:
 				email_succeeded = True
 		except smtplib.SMTPException as e:
-			email_succeded = False
+			email_succeeded = False
 			email_error = str(e)
 		callback(True, email_error)
 
