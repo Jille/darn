@@ -194,7 +194,7 @@ class DARN:
 				email_error = "Failed to send to some recipients: " + str(recipients_failed)
 			else:
 				email_succeeded = True
-		except SMTPException as e:
+		except smtplib.SMTPException as e:
 			email_succeded = False
 			email_error = str(e)
 		callback(True, email_error)
