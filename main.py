@@ -151,7 +151,10 @@ class DARN:
 		self.maintenance_shutdown = False
 		self.reload()
 		(host, port) = split_hostname(self.mynode.name)
-		self.debug("Going to listen on host %s port %s" % (host, port))
+		host = ''
+		if 'bind_host' in self.mynode.config:
+			host = self.mynode.config['bind_host']
+		self.debug("Going to listen on host %s port %s" % (host if host != '' else '*', port))
 		self.net.create_server_socket(host, port, lambda *_: None, self.data_from_unidentified_host)
 
 		for node in self.mynode.config['nodes']:
