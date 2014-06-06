@@ -114,7 +114,7 @@ class DARNode:
 			darn.receive_error_event(self, data)
 		elif data['type'] == "signoff":
 			darn.info("Received signoff event from node %s, success=%s: %s" % (self.name, data['success'], data['message']))
-			self.process_error_event_signoff(self.name, data['id'], data['success'])
+			darn.process_error_event_signoff(self.name, data['id'], data['success'])
 		elif data['type'] == "maintenance":
 			self.config = None
 			self.config_version = 0
