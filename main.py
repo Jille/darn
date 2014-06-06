@@ -111,7 +111,7 @@ class DARNode:
 			self.failed = False
 		elif data['type'] == "error":
 			darn.info("Received error from friend node %s" % self.name)
-			darn.receive_error_event(self.name, data)
+			darn.receive_error_event(self, data)
 		elif data['type'] == "signoff":
 			darn.info("Received signoff event from node %s, success=%s: %s" % (self.name, data['success'], data['message']))
 			self.process_error_event_signoff(self.name, data['id'], data['success'])
@@ -247,7 +247,7 @@ class DARN:
 	is in event['victim'].
 	"""
 	def receive_error_event(self, node, event):
-		self.debug("Received error event for node=%s" % node)
+		self.debug("Received error event for node %s" % node.name)
 		if event['victim'] not in self.nodes or self.nodes[event['victim']].config is None:
 			self.info("Received error event about victim %s, but I don't have its node config, so can't inform it" % event['victim'])
 			signoff_packet = {
