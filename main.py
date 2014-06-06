@@ -347,7 +347,7 @@ class DARN:
 					self.handle_error_event(event, handle_response)
 				else:
 					self.info("Sending error event about victim %s to node %s" % (event['victim'], current_node))
-					current_node.connection.send(event)
+					self.nodes[current_node].connection.send(event)
 
 	"""
 	Process an error-event sign-off packet from a node. If the sign-off is
