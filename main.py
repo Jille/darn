@@ -347,6 +347,9 @@ class DARN:
 					self.handle_error_event(event, handle_response)
 				else:
 					self.info("Sending error event about victim %s to node %s" % (event['victim'], current_node))
+					if current_node not in self.nodes:
+						self.nodes[current_node] = DARNode(current_node)
+						self.nodes[current_node].connect()
 					self.nodes[current_node].connection.send(event)
 
 	"""
