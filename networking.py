@@ -178,7 +178,7 @@ class DARNServerSocket(asyncore.dispatcher):
 		if pair is not None:
 			sock, addr = pair
 			print 'Incoming connection from %s' % repr(addr)
-			host = DARNHost(self.connect_callback, self.data_callback)
+			host = DARNHost(self.connect_callback, self.data_callback, lambda *_: None)
 			host.setSocket(DARNSocket(host, sock))
 
 class DARNetworking:
