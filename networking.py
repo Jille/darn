@@ -4,6 +4,7 @@ import json
 import re
 import time
 import socket
+import sys
 
 class DARNMessage:
 	def __init__(self, type, expire):
@@ -30,13 +31,14 @@ class DARNMessagePong(DARNMessage):
 		DARNMessage.__init__(self, "pong", expiry)
 
 class DARNHost:
-	def __init__(self, connect_callback, data_callback):
+	def __init__(self, connect_callback, data_callback, error_callback):
 		self.host = None
 		self.port = None
 		self.socket = None
 		self.msgqueue = Queue.Queue(0)
 		self.connect_callback = connect_callback
 		self.data_callback = data_callback
+		self.error_callback  = error_callback
 
 	def setSocket(self, sock):
 		self.socket = sock
@@ -45,9 +47,10 @@ class DARNHost:
 		self.host = host
 		self.port = port
 
-	def change_callbacks(self, connect_callback, data_callback):
+	def change_callbacks(self, connect_callback, data_callback, error_callback):
 		self.connect_callback = connect_callback
 		self.data_callback = data_callback
+		self.error_callback = error_callback
 
 	def connect(self):
 		sock = DARNSocket(self)
@@ -59,6 +62,9 @@ class DARNHost:
 
 	def handle_connect(self):
 		self.connect_callback(self)
+
+	def handle_connect_error(self, exctype, value):
+		self.error_callback(self, exctype, value)
 
 	def receive_msg(self, msg):
 		data = json.loads(msg)
@@ -119,7 +125,8 @@ class DARNSocket(asyncore.dispatcher):
 		self.handle_error = asyncore.dispatcher.handle_error
 
 	def handle_connect_error(self):
-		print "Connecting failed"
+		exctype, value = sys.exc_info()[:2]
+		self.manager.handle_connect_error(exctype, value)
 
 	def handle_close(self):
 		self.manager.lost_socket()

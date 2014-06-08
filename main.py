@@ -28,7 +28,7 @@ class DARNode:
 	def connect(self):
 		assert self.connection is None
 		(hostname, port) = split_hostname(self.name)
-		self.connection = DARNHost(self._initialize_outbound_connection, self._receive_data)
+		self.connection = DARNHost(self._initialize_outbound_connection, self._receive_data, self._report_error)
 		self.connection.setHost(hostname, port)
 		self.connection.connect()
 
@@ -36,7 +36,7 @@ class DARNode:
 		(hostname, port) = split_hostname(self.name)
 		host.setHost(hostname, port)
 		if self.connection is None:
-			host.change_callbacks(self._initialize_outbound_connection, self._receive_data)
+			host.change_callbacks(self._initialize_outbound_connection, self._receive_data, self._report_error)
 			self.connection = host
 		else:
 			host.merge(self.connection)
@@ -120,6 +120,10 @@ class DARNode:
 			self.config_version = 0
 		else:
 			darn.info("Received unknown packet type %s from node %s" % (data['type'], self.name))
+	
+	def _report_error(self, host, exctype, error):
+		assert host == self.connection
+		darn.info("Error while connecting to node %s: %s" % (self.name, error))
 
 class DARN:
 	VERSION = "0.1"
