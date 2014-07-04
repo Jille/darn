@@ -427,8 +427,8 @@ class DARN:
 
 	"""Push configuration, testament and node key to all nodes."""
 	def push_config(self):
-		for node in self.nodes:
-			node.push_config(self.mynode)
+		for hostname in self.nodes:
+			self.nodes[hostname].push_config(self.mynode)
 
 if __name__ == "__main__":
 	darn = DARN(sys.argv[1])
